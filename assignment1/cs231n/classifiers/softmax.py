@@ -54,7 +54,7 @@ def softmax_loss_naive(W, X, y, reg):
     # loss is being computed. As a result you may need to modify some of the    #
     # code above to compute the gradient.                                       #
     #############################################################################
-    # \nabla_W(loss(W))_j = \frac{1}{N}\sum(-X^{(i)}1\{y^{i} = j\} + \frac{e^{X^{(i)}W_j}}{\sum_k e^{X^{(i)}W_j}}) + 2 reg W_j
+    # \nabla_W(loss(W))_j = \frac{1}{N}\sum(-X.T^{(i)}1\{y^{i} = j\} + \frac{e^{X^{(i)}W_j}}{\sum_k e^{X^{(i)}W_j}}) + 2 reg W_j
     # W_j is the jth column of W 
 
     return loss, dW
@@ -69,15 +69,19 @@ def softmax_loss_vectorized(W, X, y, reg):
     # Initialize the loss and gradient to zero.
     loss = 0.0
     dW = np.zeros_like(W)
-
+    num_train = X.shape[0]
 
     #############################################################################
     # TODO:                                                                     #
     # Implement a vectorized version of the softmax loss, storing the           #
     # result in loss.                                                           #
     #############################################################################
-
-
+    scores = X @ W
+    scores -= scores.max(axis = 1, keepdims = True) # X.shape[0], W.shape[1] - X.shape[1], 1
+    P = np.exp(scores)
+    P /= P.sum(axis = 1, keepdims = True)
+    logP = -np.log(P[np.arange(num_train), y])
+    loss = logP.sum() / num_train + reg * np.sum(W * W)
     #############################################################################
     # TODO:                                                                     #
     # Implement a vectorized version of the gradient for the softmax            #
@@ -87,6 +91,8 @@ def softmax_loss_vectorized(W, X, y, reg):
     # to reuse some of the intermediate values that you used to compute the     #
     # loss.                                                                     #
     #############################################################################
-
-
+    # \nabla_W(loss(W))_j = \frac{1}{N}\sum(-X.T^{(i)}1\{y^{i} = j\} + \frac{e^{X^{(i)}W_j}}{\sum_k e^{X^{(i)}W_j}}) + 2 reg W_j
+    # W_j is the jth column of W 
+    dW = P.copy(); dW[np.arange(num_train), y] -= 1
+    dW = X.T @ dW / num_train + 2 * reg * W
     return loss, dW
