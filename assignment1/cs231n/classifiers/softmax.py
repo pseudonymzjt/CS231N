@@ -27,8 +27,8 @@ def softmax_loss_naive(W, X, y, reg):
     dW = np.zeros_like(W)
 
     # compute the loss and the gradient
-    num_classes = W.shape[1]
-    num_train = X.shape[0]
+    num_classes = W.shape[1] # C
+    num_train = X.shape[0] # N
     for i in range(num_train):
         scores = X[i].dot(W)
 
@@ -40,10 +40,12 @@ def softmax_loss_naive(W, X, y, reg):
 
         loss -= logp[y[i]]  # negative log probability is the loss
 
-
+        dscore = p.copy(); dscore[y[i]] -= 1
+        dW += np.outer(X[i], dscore)
     # normalized hinge loss plus regularization
     loss = loss / num_train + reg * np.sum(W * W)
-
+    # loss = -\frac{1}{N}\sum_i (X^{(i)}W_{y(i)} - log(\sum_j e^{X^{(i)}W_j})) + reg * ||W||^2
+    dW = dW / num_train + 2 * reg * W
     #############################################################################
     # TODO:                                                                     #
     # Compute the gradient of the loss function and store it dW.                #
@@ -52,7 +54,8 @@ def softmax_loss_naive(W, X, y, reg):
     # loss is being computed. As a result you may need to modify some of the    #
     # code above to compute the gradient.                                       #
     #############################################################################
-
+    # \nabla_W(loss(W))_j = \frac{1}{N}\sum(-X^{(i)}1\{y^{i} = j\} + \frac{e^{X^{(i)}W_j}}{\sum_k e^{X^{(i)}W_j}}) + 2 reg W_j
+    # W_j is the jth column of W 
 
     return loss, dW
 
