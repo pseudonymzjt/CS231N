@@ -150,11 +150,14 @@ class FullyConnectedNet(object):
         ############################################################################
         middle = {0: X}
         cache = {}
+        mask = {}
         num = self.num_layers
         
         for i in range(num - 1):
             if self.normalization == None:
                 middle[i + 1], cache[i + 1] = affine_relu_forward(middle[i], self.params['W' + str(i + 1)], self.params['b' + str(i + 1)])
+                if self.use_dropout:
+                    middle[i + 1], mask[i + 1] = dropout_forward(middle[i + 1], self.dropout_param)
             elif self.normalization == 'batchnorm':
                 middle[i + 1], cache[i + 1] = affine_batchnorm_relu_forward(middle[i], self.params['W' + str(i + 1)], self.params['b' + str(i + 1)], 
                                                                        self.params['gamma' + str(i + 1)], self.params['beta' + str(i + 1)], self.bn_params[i])
@@ -192,7 +195,8 @@ class FullyConnectedNet(object):
 
         for i in range(num - 2, -1, -1):
             if self.normalization == None:
-                dmiddle[i], grads['W' + str(i + 1)], grads['b' + str(i + 1)] = affine_relu_backward(dmiddle[i + 1], cache[i + 1])
+                dout = dropout_backward(dmiddle[i + 1], mask[i + 1]) if self.use_dropout else dmiddle[i + 1]
+                dmiddle[i], grads['W' + str(i + 1)], grads['b' + str(i + 1)] = affine_relu_backward(dout, cache[i + 1])
                 grads['W' + str(i + 1)] += self.reg * self.params['W' + str(i + 1)]
             elif self.normalization == 'batchnorm':
                 dmiddle[i], grads['W' + str(i + 1)], grads['b' + str(i + 1)], grads['gamma' + str(i + 1)], grads['beta' + str(i + 1)] = affine_batchnorm_relu_backward(dmiddle[i + 1], cache[i + 1])
