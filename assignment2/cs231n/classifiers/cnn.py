@@ -5,6 +5,7 @@ from ..layers import *
 from ..fast_layers import *
 from ..layer_utils import *
 
+import math
 
 class ThreeLayerConvNet(object):
     """
@@ -61,7 +62,16 @@ class ThreeLayerConvNet(object):
         # **the width and height of the input are preserved**. Take a look at      #
         # the start of the loss() function to see how that happens.                #
         ############################################################################
-
+        self.params['W1'] = np.random.randn(num_filters, input_dim[0], filter_size, filter_size) * weight_scale
+        self.params['b1'] = np.zeros(num_filters)
+        mid_dim = math.prod(input_dim) // (input_dim[0] * 4) * num_filters 
+        self.params['W2'] = np.random.randn(mid_dim, hidden_dim) * weight_scale # assume input size doesn't change
+        self.params['b2'] = np.zeros(hidden_dim)
+        self.params['W3'] = np.random.randn(hidden_dim, num_classes) * weight_scale
+        self.params['b3'] = np.zeros(num_classes)
+        for param in self.params.items():
+            key, value = param
+            print(f'{key}: {value.shape}')
         ############################################################################
         #                             END OF YOUR CODE                             #
         ############################################################################
@@ -96,7 +106,14 @@ class ThreeLayerConvNet(object):
         # Remember you can use the functions defined in cs231n/fast_layers.py and  #
         # cs231n/layer_utils.py in your implementation (already imported).         #
         ############################################################################
+        middle = {0: X}
+        cache = {}
 
+        middle[1], cache[0] = conv_relu_pool_forward(middle[0], W1, b1, conv_param, pool_param)
+        # print(f'after conv_relu_pool_forward\n middle1 max: {middle[1].max()}, middle1 min: {middle[1].min()}')
+        middle[2], cache[1] = affine_relu_forward(middle[1], W2, b2)
+        # print(f'after affine_relu_forward\n middle2 max: {middle[2].max()}, middle2 min: {middle[2].min()}')
+        scores, cache[2] = affine_forward(middle[2], W3, b3)
         ############################################################################
         #                             END OF YOUR CODE                             #
         ############################################################################
@@ -115,7 +132,23 @@ class ThreeLayerConvNet(object):
         # automated tests, make sure that your L2 regularization includes a factor #
         # of 0.5 to simplify the expression for the gradient.                      #
         ############################################################################
+        dmiddle = {}
+        # print("scores shape:", scores.shape)
+        # print("scores min:", np.min(scores))
+        # print("scores max:", np.max(scores))
+        # print("scores mean:", np.mean(scores))
+        # print("scores finite:", np.all(np.isfinite(scores)))
+        loss, dscores = softmax_loss(scores, y)
+        loss += 0.5 * self.reg * (sum(np.sum(self.params['W' + str(i)] * self.params['W' + str(i)]) for i in range(1, 3 + 1)))
 
+        dmiddle[2], grads['W3'], grads['b3'] = affine_backward(dscores, cache[2])
+        grads['W3'] += self.reg * self.params['W3']
+
+        dmiddle[1], grads['W2'], grads['b2'] = affine_relu_backward(dmiddle[2], cache[1])
+        grads['W2'] += self.reg * self.params['W2']
+
+        dmiddle[0], grads['W1'], grads['b1'] = conv_relu_pool_backward(dmiddle[1], cache[0])
+        grads['W1'] += self.reg * self.params['W1']
         ############################################################################
         #                             END OF YOUR CODE                             #
         ############################################################################
